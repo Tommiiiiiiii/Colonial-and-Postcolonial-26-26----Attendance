@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro Presenze</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --ink: #0f0f0f;
+    --ink2: #444;
+    --ink3: #888;
+    --paper: #fafaf7;
+    --paper2: #f0f0ea;
+    --paper3: #e4e4dc;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --green: #16a34a;
+    --green-light: #dcfce7;
+    --red: #dc2626;
+    --red-light: #fee2e2;
+    --amber: #d97706;
+    --amber-light: #fef3c7;
+    --radius: 12px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── VIEWS ── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── STUDENT VIEW ── */
+  #view-student {
+    min-height: 100vh;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  #view-student.active { display: flex; }
+
+  .student-card {
+    background: white;
+    border: 1px solid var(--paper3);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+
+  .student-card .logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--ink3);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .student-card h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    line-height: 1.2;
+  }
+
+  .lesson-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin: 0.75rem 0 1.5rem;
+  }
+
+  .timer-bar {
+    background: var(--paper2);
+    border-radius: 100px;
+    height: 6px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+  }
+  .timer-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 100px;
+    transition: width 1s linear, background 0.3s;
+  }
+  .timer-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink3);
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .field-group { margin-bottom: 1rem; }
+  .field-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink2);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .field-group input {
+    width: 100%;
+    border: 1.5px solid var(--paper3);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-family: var(--sans);
+    font-size: 16px;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-group input:focus { border-color: var(--accent); background: white; }
+  .field-group input:disabled { opacity: 0.5; }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    padding: 14px;
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 0.5rem;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .remembered-banner {
+    background: var(--green-light);
+    color: var(--green);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 1rem;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .remembered-banner.show { display: flex; }
+
+  .success-state {
+    text-align: center;
+    padding: 1rem 0;
+  }
+  .success-icon {
+    width: 64px; height: 64px;
+    background: var(--green-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 28px;
+  }
+  .success-state h2 { font-size: 20px; margin-bottom: 0.5rem; }
+  .success-state p { color: var(--ink3); font-size: 14px; }
+
+  .closed-state {
+    text-align: center;
+    padding: 1rem 0;
+  }
+  .closed-icon {
+    width: 64px; height: 64px;
+    background: var(--amber-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 28px;
+  }
+
+  /* ── PROFESSOR VIEW ── */
+  #view-prof {
+    min-height: 100vh;
+    display: none;
+  }
+  #view-prof.active { display: block; }
+
+  .prof-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    background: var(--ink);
+    color: white;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .sidebar-logo {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    color: #888;
+    text-transform: uppercase;
+  }
+  .sidebar h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    margin-top: 0.25rem;
+  }
+
+  .qr-wrapper {
+    background: white;
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .qr-wrapper #qrcode canvas, .qr-wrapper #qrcode img { border-radius: 4px; }
+  .qr-url {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink3);
+    word-break: break-all;
+    text-align: center;
+    max-width: 180px;
+  }
+
+  .session-info {
+    background: rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    padding: 1rem;
+  }
+  .session-info .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 4px 0;
+    color: #bbb;
+  }
+  .session-info .row span:last-child { color: white; font-weight: 500; }
+
+  .timer-section { }
+  .timer-section .t-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .big-timer {
+    font-family: var(--mono);
+    font-size: 36px;
+    font-weight: 500;
+    color: white;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+  }
+  .big-timer.warning { color: #f59e0b; }
+  .big-timer.ended { color: #ef4444; }
+
+  .sidebar-bar {
+    background: rgba(255,255,255,0.12);
+    border-radius: 100px;
+    height: 4px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .sidebar-fill {
+    height: 100%;
+    background: white;
+    border-radius: 100px;
+    transition: width 1s linear, background 0.3s;
+  }
+
+  .btn-session {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius);
+    border: none;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    margin-bottom: 8px;
+  }
+  .btn-session:hover { opacity: 0.85; }
+  .btn-open { background: #22c55e; color: white; }
+  .btn-close { background: #ef4444; color: white; }
+  .btn-dropbox { background: #0061ff; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-dropbox img { width: 16px; height: 16px; }
+  .btn-secondary {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    background: transparent;
+    color: white;
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 8px;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.08); }
+
+  .dropbox-status {
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    text-align: center;
+    display: none;
+  }
+  .dropbox-status.connected { background: rgba(0,97,255,0.2); color: #93c5fd; display: block; }
+  .dropbox-status.error { background: rgba(239,68,68,0.2); color: #fca5a5; display: block; }
+
+  /* ── MAIN CONTENT ── */
+  .main-content {
+    padding: 2rem;
+    overflow-y: auto;
+  }
+
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--paper3);
+  }
+  .main-header h1 { font-size: 24px; font-weight: 600; }
+  .main-header p { color: var(--ink3); font-size: 14px; margin-top: 2px; }
+
+  .lesson-config {
+    background: white;
+    border: 1px solid var(--paper3);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .lesson-config h3 { font-size: 14px; font-weight: 600; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink2); }
+  .config-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .config-row .field-group { flex: 1; min-width: 180px; margin-bottom: 0; }
+  .config-row input {
+    border: 1.5px solid var(--paper3);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-family: var(--sans);
+    font-size: 14px;
+    background: var(--paper);
+    width: 100%;
+    outline: none;
+  }
+  .config-row input:focus { border-color: var(--accent); }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: white;
+    border: 1px solid var(--paper3);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+  .stat-card .stat-n { font-family: var(--mono); font-size: 32px; font-weight: 500; }
+  .stat-card .stat-l { font-size: 12px; color: var(--ink3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .attendance-table-wrap {
+    background: white;
+    border: 1px solid var(--paper3);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--paper3);
+  }
+  .table-header h3 { font-size: 14px; font-weight: 600; }
+  .btn-export {
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-export:hover { opacity: 0.8; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    padding: 10px 16px;
+    text-align: left;
+    background: var(--paper);
+    border-bottom: 1px solid var(--paper3);
+  }
+  td {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--paper2);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--paper); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-green { background: var(--green-light); color: var(--green); }
+
+  /* ── LOGIN VIEW ── */
+  #view-login {
+    min-height: 100vh;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #view-login.active { display: flex; }
+
+  .login-card {
+    background: white;
+    border: 1px solid var(--paper3);
+    border-radius: 20px;
+    padding: 3rem 2.5rem;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    text-align: center;
+  }
+  .login-card .mono { font-family: var(--mono); font-size: 11px; color: var(--ink3); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem; }
+  .login-card h1 { font-size: 24px; font-weight: 600; margin-bottom: 0.5rem; }
+  .login-card p { font-size: 14px; color: var(--ink3); margin-bottom: 2rem; }
+  .login-error { background: var(--red-light); color: var(--red); border-radius: 8px; padding: 10px; font-size: 13px; margin-bottom: 1rem; display: none; }
+  .login-error.show { display: block; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: white;
+    border-radius: 100px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── DROPBOX AUTH MODAL ── */
+  #dropbox-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  #dropbox-modal.show { display: flex; }
+  .modal-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 420px;
+    margin: 1rem;
+  }
+  .modal-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 0.5rem; }
+  .modal-card p { font-size: 14px; color: var(--ink3); margin-bottom: 1.5rem; line-height: 1.5; }
+  .modal-row { display: flex; gap: 0.75rem; }
+  .btn-modal-cancel {
+    flex: 1; padding: 12px; border-radius: var(--radius);
+    border: 1.5px solid var(--paper3); background: white;
+    font-family: var(--sans); font-size: 14px; cursor: pointer;
+  }
+  .btn-modal-ok {
+    flex: 2; padding: 12px; border-radius: var(--radius);
+    border: none; background: #0061ff; color: white;
+    font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+
+  .step {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--paper2);
+    font-size: 13px; color: var(--ink2);
+  }
+  .step:last-child { border-bottom: none; }
+  .step-n {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--ink); color: white;
+    font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+
+  /* ── SETUP VIEW ── */
+  #view-setup {
+    min-height: 100vh;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  #view-setup.active { display: flex; }
+  .setup-card {
+    background: white;
+    border: 1px solid var(--paper3);
+    border-radius: 20px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .setup-card .mono { font-family: var(--mono); font-size: 11px; color: var(--ink3); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem; }
+  .setup-card h1 { font-size: 22px; font-weight: 600; margin-bottom: 0.5rem; }
+  .setup-card p { font-size: 14px; color: var(--ink2); margin-bottom: 2rem; line-height: 1.6; }
+  .setup-card .field-group { margin-bottom: 1rem; }
+  .setup-note { background: var(--amber-light); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: #92400e; margin-bottom: 1.5rem; line-height: 1.5; }
+
+  @media (max-width: 768px) {
+    .prof-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .main-content { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- DROPBOX MODAL -->
+<div id="dropbox-modal">
+  <div class="modal-card">
+    <h3>Connetti Dropbox</h3>
+    <p>Verrai reindirizzato a Dropbox per autorizzare l'app. Dopo il login tornerai qui automaticamente.</p>
+    <div class="step"><div class="step-n">1</div><span>Clicca "Autorizza con Dropbox" qui sotto</span></div>
+    <div class="step"><div class="step-n">2</div><span>Accedi al tuo account Dropbox e concedi i permessi</span></div>
+    <div class="step"><div class="step-n">3</div><span>Torni qui e le presenze vengono salvate in <code>/presenze/</code> sul tuo Dropbox</span></div>
+    <br>
+    <div class="modal-row">
+      <button class="btn-modal-cancel" onclick="closeDropboxModal()">Annulla</button>
+      <button class="btn-modal-ok" onclick="startDropboxAuth()">Autorizza con Dropbox →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETUP VIEW ══ -->
+<div id="view-setup" class="view active">
+  <div class="setup-card">
+    <div class="mono">Registro presenze · Prima configurazione</div>
+    <h1>Configurazione iniziale</h1>
+    <p>Imposta una password per il pannello docente e inserisci la tua Dropbox App Key. Questi dati vengono salvati solo nel tuo browser.</p>
+
+    <div class="setup-note">
+      ⚙️ Per l'App Key: vai su <strong>dropbox.com/developers</strong> → crea un'app con permesso <em>files.content.write</em> → copia la App Key. L'URL di redirect da inserire è: <strong id="redirect-url-setup"></strong>
+    </div>
+
+    <div class="field-group">
+      <label>Password docente</label>
+      <input type="password" id="setup-pwd" placeholder="Scegli una password" />
+    </div>
+    <div class="field-group">
+      <label>Dropbox App Key</label>
+      <input type="text" id="setup-appkey" placeholder="es. abc123xyz456" />
+    </div>
+    <div class="field-group">
+      <label>Nome del corso (es. Marketing 2025)</label>
+      <input type="text" id="setup-corso" placeholder="Nome corso" />
+    </div>
+    <button class="btn-primary" onclick="saveSetup()">Salva e accedi al pannello →</button>
+  </div>
+</div>
+
+<!-- ══ LOGIN VIEW ══ -->
+<div id="view-login" class="view">
+  <div class="login-card">
+    <div class="mono">Registro presenze</div>
+    <h1>Pannello docente</h1>
+    <p>Accesso riservato al docente</p>
+    <div id="login-error" class="login-error">Password errata</div>
+    <div class="field-group">
+      <label>Password</label>
+      <input type="password" id="login-pwd" placeholder="Password docente" onkeydown="if(event.key==='Enter') doLogin()" />
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Accedi →</button>
+  </div>
+</div>
+
+<!-- ══ PROFESSOR VIEW ══ -->
+<div id="view-prof" class="view">
+  <div class="prof-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-logo">Registro presenze</div>
+        <h2 id="sidebar-corso">Il mio corso</h2>
+      </div>
+
+      <div class="qr-wrapper">
+        <div id="qrcode"></div>
+        <div class="qr-url" id="qr-url-label"></div>
+      </div>
+
+      <div class="session-info">
+        <div class="row"><span>Lezione</span><span id="info-lesson">—</span></div>
+        <div class="row"><span>Data</span><span id="info-date">—</span></div>
+        <div class="row"><span>Stato</span><span id="info-status">Chiusa</span></div>
+      </div>
+
+      <div class="timer-section">
+        <div class="t-label">Tempo rimanente</div>
+        <div class="big-timer" id="big-timer">20:00</div>
+        <div class="sidebar-bar"><div class="sidebar-fill" id="sidebar-fill" style="width:100%"></div></div>
+        <button class="btn-session btn-open" id="btn-open-session" onclick="openSession()">▶ Apri sessione</button>
+        <button class="btn-session btn-close" id="btn-close-session" onclick="closeSession()" style="display:none">■ Chiudi sessione</button>
+      </div>
+
+      <div>
+        <button class="btn-dropbox btn-session" onclick="openDropboxModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 14.56L7.07 11.5 2 14.61l5 3.12L12 14.56zM7.07 8.44L2 5.39l5.07 3.11L12 5.39l-4.93 3.05zM12 9.56L7.07 12.5 12 15.44 16.93 12.5 12 9.56zM16.93 8.5L12 5.44 16.93 2.39 22 5.44l-5.07 3.06zM12 14.56l4.93 3.06-4.93 3.05-4.93-3.05L12 14.56z"/></svg>
+          Connetti Dropbox
+        </button>
+        <div id="dropbox-status" class="dropbox-status"></div>
+        <button class="btn-secondary" onclick="exportCSV()">⬇ Esporta CSV</button>
+        <button class="btn-secondary" onclick="clearAllData()" style="color:#f87171; border-color:rgba(248,113,113,0.3)">✕ Azzera dati</button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+      <div class="main-header">
+        <div>
+          <h1>Registro presenze</h1>
+          <p id="main-subtitle">Configura la lezione e apri la sessione per iniziare</p>
+        </div>
+      </div>
+
+      <!-- CONFIG LEZIONE -->
+      <div class="lesson-config">
+        <h3>Configurazione lezione</h3>
+        <div class="config-row">
+          <div class="field-group">
+            <label>Nome lezione</label>
+            <input type="text" id="lesson-name" placeholder="es. Lezione 3 – Marketing Mix" />
+          </div>
+          <div class="field-group">
+            <label>Durata (minuti)</label>
+            <input type="number" id="lesson-duration" value="20" min="1" max="60" />
+          </div>
+          <div class="field-group">
+            <label>Data</label>
+            <input type="date" id="lesson-date" />
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-n" id="stat-present">0</div>
+          <div class="stat-l">Presenti oggi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-n" id="stat-lessons">0</div>
+          <div class="stat-l">Lezioni totali</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-n" id="stat-students">0</div>
+          <div class="stat-l">Studenti unici</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-n" id="stat-avg">—</div>
+          <div class="stat-l">Media presenze</div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="attendance-table-wrap">
+        <div class="table-header">
+          <h3>Presenze questa sessione</h3>
+          <button class="btn-export" onclick="exportCSV()">Esporta tutto CSV</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Cognome</th>
+              <th>Nome</th>
+              <th>Matricola</th>
+              <th>Ora</th>
+              <th>Lezione</th>
+            </tr>
+          </thead>
+          <tbody id="attendance-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:2rem">Nessuna presenza ancora</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STUDENT VIEW ══ -->
+<div id="view-student" class="view">
+  <div class="student-card">
+    <div class="logo">Registro presenze</div>
+    <h1 id="s-course-name">Corso</h1>
+    <div class="lesson-badge" id="s-lesson-badge">
+      <span>📅</span> <span id="s-lesson-name">Lezione</span>
+    </div>
+
+    <!-- TIMER -->
+    <div class="timer-bar"><div class="timer-fill" id="s-timer-fill" style="width:100%"></div></div>
+    <div class="timer-label">
+      <span>Tempo rimanente</span>
+      <span id="s-timer-text">20:00</span>
+    </div>
+
+    <!-- FORM / STATI -->
+    <div id="s-form">
+      <div class="remembered-banner" id="remembered-banner">
+        ✓ Dati trovati — verifica e conferma
+      </div>
+      <div class="field-group">
+        <label>Cognome</label>
+        <input type="text" id="s-cognome" placeholder="Rossi" autocomplete="family-name" />
+      </div>
+      <div class="field-group">
+        <label>Nome</label>
+        <input type="text" id="s-nome" placeholder="Mario" autocomplete="given-name" />
+      </div>
+      <div class="field-group">
+        <label>Matricola</label>
+        <input type="text" id="s-matricola" placeholder="12345" inputmode="numeric" />
+      </div>
+      <button class="btn-primary" id="s-submit-btn" onclick="submitPresenza()">Registra presenza →</button>
+    </div>
+
+    <div id="s-success" class="success-state" style="display:none">
+      <div class="success-icon">✓</div>
+      <h2>Presenza registrata!</h2>
+      <p id="s-success-name"></p>
+      <p style="margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--ink3)" id="s-success-time"></p>
+    </div>
+
+    <div id="s-closed" class="closed-state" style="display:none">
+      <div class="closed-icon">⏰</div>
+      <h2>Sessione chiusa</h2>
+      <p style="color:var(--ink3);font-size:14px;margin-top:0.5rem">La registrazione presenze non è più attiva per questa lezione.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// CONFIG & STATE
+// ════════════════════════════════════════════
+const STORAGE_KEYS = {
+  password: 'reg_password',
+  appKey: 'reg_dropbox_appkey',
+  corso: 'reg_corso',
+  attendances: 'reg_attendances',
+  session: 'reg_session',
+  dropboxToken: 'reg_dropbox_token',
+  studentData: 'reg_student_data', // per device studente
+};
+
+let sessionTimer = null;
+let sessionEndTime = null;
+let sessionDurationMin = 20;
+let dropboxToken = null;
+let qrGenerated = false;
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+function init() {
+  const url = new URL(window.location.href);
+  const mode = url.searchParams.get('mode');
+  const code = url.searchParams.get('code'); // Dropbox OAuth callback
+
+  // Set redirect URL in setup view
+  const baseUrl = window.location.origin + window.location.pathname;
+  const redirectEl = document.getElementById('redirect-url-setup');
+  if (redirectEl) redirectEl.textContent = baseUrl;
+
+  // Handle Dropbox OAuth callback
+  if (code) {
+    handleDropboxCallback(code);
+    return;
+  }
+
+  if (mode === 'student') {
+    initStudentView();
+    return;
+  }
+
+  // Professor mode
+  const pwd = localStorage.getItem(STORAGE_KEYS.password);
+  const appKey = localStorage.getItem(STORAGE_KEYS.appKey);
+
+  if (!pwd || !appKey) {
+    showView('setup');
+    return;
+  }
+
+  // Check if already logged in this session
+  if (sessionStorage.getItem('logged_in') === '1') {
+    initProfView();
+  } else {
+    showView('login');
+  }
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+}
+
+// ════════════════════════════════════════════
+// SETUP
+// ════════════════════════════════════════════
+function saveSetup() {
+  const pwd = document.getElementById('setup-pwd').value.trim();
+  const appKey = document.getElementById('setup-appkey').value.trim();
+  const corso = document.getElementById('setup-corso').value.trim();
+
+  if (!pwd || !appKey || !corso) {
+    toast('Compila tutti i campi');
+    return;
+  }
+
+  localStorage.setItem(STORAGE_KEYS.password, pwd);
+  localStorage.setItem(STORAGE_KEYS.appKey, appKey);
+  localStorage.setItem(STORAGE_KEYS.corso, corso);
+  sessionStorage.setItem('logged_in', '1');
+
+  initProfView();
+}
+
+// ════════════════════════════════════════════
+// LOGIN
+// ════════════════════════════════════════════
+function doLogin() {
+  const input = document.getElementById('login-pwd').value;
+  const stored = localStorage.getItem(STORAGE_KEYS.password);
+  if (input === stored) {
+    sessionStorage.setItem('logged_in', '1');
+    document.getElementById('login-error').classList.remove('show');
+    initProfView();
+  } else {
+    document.getElementById('login-error').classList.add('show');
+  }
+}
+
+// ════════════════════════════════════════════
+// PROFESSOR VIEW
+// ════════════════════════════════════════════
+function initProfView() {
+  showView('prof');
+  const corso = localStorage.getItem(STORAGE_KEYS.corso) || 'Il mio corso';
+  document.getElementById('sidebar-corso').textContent = corso;
+
+  // Set today's date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('lesson-date').value = today;
+
+  // Restore dropbox token
+  dropboxToken = localStorage.getItem(STORAGE_KEYS.dropboxToken);
+  if (dropboxToken) {
+    setDropboxStatus('connected', '✓ Dropbox connesso');
+  }
+
+  generateQR();
+  updateStats();
+  renderTable();
+  checkExistingSession();
+}
+
+function generateQR() {
+  if (qrGenerated) return;
+  qrGenerated = true;
+  const baseUrl = window.location.origin + window.location.pathname;
+  const studentUrl = baseUrl + '?mode=student';
+  document.getElementById('qr-url-label').textContent = studentUrl;
+
+  const container = document.getElementById('qrcode');
+  container.innerHTML = '';
+  new QRCode(container, {
+    text: studentUrl,
+    width: 180,
+    height: 180,
+    colorDark: '#0f0f0f',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+}
+
+function checkExistingSession() {
+  const sess = JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null');
+  if (sess && sess.open && Date.now() < sess.endTime) {
+    // Restore active session
+    sessionEndTime = sess.endTime;
+    sessionDurationMin = sess.durationMin;
+    document.getElementById('lesson-name').value = sess.lessonName;
+    document.getElementById('lesson-duration').value = sess.durationMin;
+    document.getElementById('lesson-date').value = sess.date;
+    updateSessionUI(true);
+    startTimerInterval();
+  }
+}
+
+function openSession() {
+  const lessonName = document.getElementById('lesson-name').value.trim() || 'Lezione';
+  const durationMin = parseInt(document.getElementById('lesson-duration').value) || 20;
+  const date = document.getElementById('lesson-date').value || new Date().toISOString().split('T')[0];
+
+  sessionDurationMin = durationMin;
+  sessionEndTime = Date.now() + durationMin * 60 * 1000;
+
+  const sess = { open: true, lessonName, durationMin, date, endTime: sessionEndTime };
+  localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(sess));
+
+  updateSessionUI(true);
+  startTimerInterval();
+  toast('Sessione aperta! Proietta il QR code.');
+}
+
+function closeSession() {
+  clearInterval(sessionTimer);
+  sessionTimer = null;
+  sessionEndTime = null;
+
+  const sess = JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || '{}');
+  sess.open = false;
+  localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(sess));
+
+  updateSessionUI(false);
+  document.getElementById('big-timer').textContent = '00:00';
+  document.getElementById('big-timer').className = 'big-timer ended';
+  document.getElementById('sidebar-fill').style.width = '0%';
+
+  // Auto-save to Dropbox
+  if (dropboxToken) saveToDropbox();
+
+  toast('Sessione chiusa.');
+}
+
+function updateSessionUI(open) {
+  const sess = JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || '{}');
+  document.getElementById('btn-open-session').style.display = open ? 'none' : 'block';
+  document.getElementById('btn-close-session').style.display = open ? 'block' : 'none';
+  document.getElementById('info-lesson').textContent = sess.lessonName || '—';
+  document.getElementById('info-date').textContent = sess.date || '—';
+  document.getElementById('info-status').textContent = open ? '🟢 Aperta' : '🔴 Chiusa';
+  document.getElementById('main-subtitle').textContent = open
+    ? `Sessione attiva — ${sess.lessonName}`
+    : 'Configura la lezione e apri la sessione';
+}
+
+function startTimerInterval() {
+  clearInterval(sessionTimer);
+  updateTimer();
+  sessionTimer = setInterval(() => {
+    if (!sessionEndTime) return;
+    if (Date.now() >= sessionEndTime) {
+      closeSession();
+    } else {
+      updateTimer();
+    }
+  }, 1000);
+}
+
+function updateTimer() {
+  if (!sessionEndTime) return;
+  const remaining = Math.max(0, sessionEndTime - Date.now());
+  const totalMs = sessionDurationMin * 60 * 1000;
+  const pct = (remaining / totalMs) * 100;
+  const mins = Math.floor(remaining / 60000);
+  const secs = Math.floor((remaining % 60000) / 1000);
+  const label = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+
+  document.getElementById('big-timer').textContent = label;
+  document.getElementById('sidebar-fill').style.width = pct + '%';
+
+  const timerEl = document.getElementById('big-timer');
+  timerEl.className = 'big-timer' + (remaining < 120000 ? ' warning' : '');
+}
+
+function updateStats() {
+  const attendances = getAllAttendances();
+  const sess = JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || '{}');
+
+  // Present today
+  const today = attendances.filter(a => a.lessonName === sess.lessonName && a.date === sess.date);
+  document.getElementById('stat-present').textContent = today.length;
+
+  // Lessons
+  const lessons = [...new Set(attendances.map(a => a.lessonName + '_' + a.date))];
+  document.getElementById('stat-lessons').textContent = lessons.length;
+
+  // Unique students
+  const students = [...new Set(attendances.map(a => a.matricola))];
+  document.getElementById('stat-students').textContent = students.length;
+
+  // Avg
+  if (lessons.length > 0 && students.length > 0) {
+    const avg = (attendances.length / lessons.length).toFixed(1);
+    document.getElementById('stat-avg').textContent = avg;
+  }
+}
+
+function renderTable() {
+  const attendances = getAllAttendances();
+  const sess = JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || '{}');
+  const current = attendances.filter(a => a.lessonName === sess.lessonName && a.date === sess.date);
+  const tbody = document.getElementById('attendance-tbody');
+
+  if (current.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:2rem">Nessuna presenza ancora</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = current.map((a, i) => `
+    <tr>
+      <td style="font-family:var(--mono);color:var(--ink3)">${i + 1}</td>
+      <td style="font-weight:500">${a.cognome}</td>
+      <td>${a.nome}</td>
+      <td style="font-family:var(--mono)">${a.matricola}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--ink3)">${a.time}</td>
+      <td><span class="badge badge-green">✓ ${a.lessonName}</span></td>
+    </tr>
+  `).join('');
+}
+
+function getAllAttendances() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEYS.attendances) || '[]');
+}
+
+function exportCSV() {
+  const attendances = getAllAttendances();
+  if (attendances.length === 0) { toast('Nessun dato da esportare'); return; }
+
+  const rows = [['Cognome','Nome','Matricola','Data','Ora','Lezione']];
+  attendances.forEach(a => rows.push([a.cognome, a.nome, a.matricola, a.date, a.time, a.lessonName]));
+
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'presenze.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV scaricato!');
+}
+
+function clearAllData() {
+  if (!confirm('Sei sicuro? Questo cancellerà tutte le presenze salvate nel browser.')) return;
+  localStorage.removeItem(STORAGE_KEYS.attendances);
+  localStorage.removeItem(STORAGE_KEYS.session);
+  updateStats();
+  renderTable();
+  toast('Dati azzerati.');
+}
+
+// ════════════════════════════════════════════
+// DROPBOX
+// ════════════════════════════════════════════
+function openDropboxModal() {
+  document.getElementById('dropbox-modal').classList.add('show');
+}
+function closeDropboxModal() {
+  document.getElementById('dropbox-modal').classList.remove('show');
+}
+
+function startDropboxAuth() {
+  const appKey = localStorage.getItem(STORAGE_KEYS.appKey);
+  if (!appKey) { toast('App Key non configurata'); return; }
+
+  const baseUrl = window.location.origin + window.location.pathname;
+  const authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&response_type=code&redirect_uri=${encodeURIComponent(baseUrl)}&token_access_type=offline`;
+  window.location.href = authUrl;
+}
+
+async function handleDropboxCallback(code) {
+  // Exchange code for token
+  const appKey = localStorage.getItem(STORAGE_KEYS.appKey);
+  const baseUrl = window.location.origin + window.location.pathname;
+
+  try {
+    const resp = await fetch('https://api.dropboxapi.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        grant_type: 'authorization_code',
+        client_id: appKey,
+        redirect_uri: baseUrl,
+      })
+    });
+    const data = await resp.json();
+    if (data.access_token) {
+      localStorage.setItem(STORAGE_KEYS.dropboxToken, data.access_token);
+      dropboxToken = data.access_token;
+      // Clear URL params and go to prof view
+      window.history.replaceState({}, '', window.location.pathname);
+      sessionStorage.setItem('logged_in', '1');
+      initProfView();
+      setTimeout(() => { setDropboxStatus('connected', '✓ Dropbox connesso!'); toast('Dropbox connesso con successo!'); }, 500);
+    } else {
+      window.history.replaceState({}, '', window.location.pathname);
+      showView('login');
+      toast('Errore connessione Dropbox');
+    }
+  } catch(e) {
+    window.history.replaceState({}, '', window.location.pathname);
+    showView('login');
+  }
+}
+
+async function saveToDropbox() {
+  if (!dropboxToken) return;
+  const attendances = getAllAttendances();
+  const rows = [['Cognome','Nome','Matricola','Data','Ora','Lezione']];
+  attendances.forEach(a => rows.push([a.cognome, a.nome, a.matricola, a.date, a.time, a.lessonName]));
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const corso = localStorage.getItem(STORAGE_KEYS.corso) || 'corso';
+  const filename = corso.replace(/[^a-z0-9]/gi,'_').toLowerCase() + '_presenze.csv';
+
+  try {
+    const resp = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${dropboxToken}`,
+        'Content-Type': 'application/octet-stream',
+        'Dropbox-API-Arg': JSON.stringify({
+          path: `/presenze/${filename}`,
+          mode: 'overwrite',
+          autorename: false,
+          mute: false,
+        })
+      },
+      body: '\uFEFF' + csv,
+    });
+    if (resp.ok) {
+      toast('✓ Salvato su Dropbox!');
+    } else {
+      const err = await resp.json();
+      if (err.error && err.error['.tag'] === 'expired_access_token') {
+        localStorage.removeItem(STORAGE_KEYS.dropboxToken);
+        setDropboxStatus('error', 'Token scaduto — riconnetti Dropbox');
+      } else {
+        toast('Errore salvataggio Dropbox');
+      }
+    }
+  } catch(e) {
+    toast('Errore connessione Dropbox');
+  }
+}
+
+function setDropboxStatus(type, msg) {
+  const el = document.getElementById('dropbox-status');
+  el.className = 'dropbox-status ' + type;
+  el.textContent = msg;
+}
+
+// ════════════════════════════════════════════
+// STUDENT VIEW
+// ════════════════════════════════════════════
+function initStudentView() {
+  showView('student');
+
+  const sess = JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null');
+  const corso = localStorage.getItem(STORAGE_KEYS.corso) || 'Corso';
+
+  document.getElementById('s-course-name').textContent = corso;
+
+  if (!sess || !sess.open) {
+    // Session closed
+    document.getElementById('s-form').style.display = 'none';
+    document.getElementById('s-closed').style.display = 'block';
+    document.getElementById('timer-bar') && (document.getElementById('timer-bar').style.display = 'none');
+    return;
+  }
+
+  if (Date.now() > sess.endTime) {
+    document.getElementById('s-form').style.display = 'none';
+    document.getElementById('s-closed').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('s-lesson-name').textContent = sess.lessonName;
+  sessionEndTime = sess.endTime;
+  sessionDurationMin = sess.durationMin;
+
+  // Check if already registered this session
+  const attended = JSON.parse(localStorage.getItem('student_attended_' + sess.lessonName + '_' + sess.date) || 'false');
+  if (attended) {
+    document.getElementById('s-form').style.display = 'none';
+    document.getElementById('s-success').style.display = 'block';
+    document.getElementById('s-success-name').textContent = attended.nome + ' ' + attended.cognome;
+    document.getElementById('s-success-time').textContent = 'Registrato alle ' + attended.time;
+    updateStudentTimer();
+    setInterval(updateStudentTimer, 1000);
+    return;
+  }
+
+  // Pre-fill from memory
+  const memory = JSON.parse(localStorage.getItem(STORAGE_KEYS.studentData) || 'null');
+  if (memory) {
+    document.getElementById('s-nome').value = memory.nome;
+    document.getElementById('s-cognome').value = memory.cognome;
+    document.getElementById('s-matricola').value = memory.matricola;
+    document.getElementById('remembered-banner').classList.add('show');
+  }
+
+  updateStudentTimer();
+  setInterval(updateStudentTimer, 1000);
+}
+
+function updateStudentTimer() {
+  if (!sessionEndTime) return;
+  const remaining = Math.max(0, sessionEndTime - Date.now());
+  const totalMs = sessionDurationMin * 60 * 1000;
+  const pct = (remaining / totalMs) * 100;
+  const mins = Math.floor(remaining / 60000);
+  const secs = Math.floor((remaining % 60000) / 1000);
+  const label = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+
+  const fillEl = document.getElementById('s-timer-fill');
+  const textEl = document.getElementById('s-timer-text');
+  if (fillEl) fillEl.style.width = pct + '%';
+  if (fillEl) fillEl.style.background = remaining < 120000 ? '#f59e0b' : 'var(--accent)';
+  if (textEl) textEl.textContent = label;
+
+  if (remaining <= 0) {
+    document.getElementById('s-form').style.display = 'none';
+    document.getElementById('s-closed').style.display = 'block';
+  }
+}
+
+function submitPresenza() {
+  const nome = document.getElementById('s-nome').value.trim();
+  const cognome = document.getElementById('s-cognome').value.trim();
+  const matricola = document.getElementById('s-matricola').value.trim();
+
+  if (!nome || !cognome || !matricola) {
+    toast('Compila tutti i campi');
+    return;
+  }
+
+  const sess = JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null');
+  if (!sess || !sess.open || Date.now() > sess.endTime) {
+    document.getElementById('s-form').style.display = 'none';
+    document.getElementById('s-closed').style.display = 'block';
+    return;
+  }
+
+  const now = new Date();
+  const time = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  const record = { nome, cognome, matricola, date: sess.date, time, lessonName: sess.lessonName };
+
+  // Save to global attendance list
+  const all = getAllAttendances();
+  // Prevent duplicate by same device in same session
+  const alreadyExists = all.some(a => a.matricola === matricola && a.lessonName === sess.lessonName && a.date === sess.date);
+  if (!alreadyExists) {
+    all.push(record);
+    localStorage.setItem(STORAGE_KEYS.attendances, JSON.stringify(all));
+  }
+
+  // Remember student data for future
+  localStorage.setItem(STORAGE_KEYS.studentData, JSON.stringify({ nome, cognome, matricola }));
+
+  // Mark as attended for this session on this device
+  localStorage.setItem('student_attended_' + sess.lessonName + '_' + sess.date, JSON.stringify(record));
+
+  // Show success
+  document.getElementById('s-form').style.display = 'none';
+  document.getElementById('s-success').style.display = 'block';
+  document.getElementById('s-success-name').textContent = nome + ' ' + cognome;
+  document.getElementById('s-success-time').textContent = `Registrato alle ${time}`;
+}
+
+// ════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ════════════════════════════════════════════
+// LIVE REFRESH (professor watches new entries)
+// ════════════════════════════════════════════
+setInterval(() => {
+  const viewProf = document.getElementById('view-prof');
+  if (viewProf.classList.contains('active')) {
+    updateStats();
+    renderTable();
+  }
+}, 3000);
+
+// START
+init();
+</script>
+</body>
+</html>
