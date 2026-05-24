@@ -620,6 +620,10 @@
       <input type="text" id="setup-appkey" placeholder="es. abc123xyz456" />
     </div>
     <div class="field-group">
+      <label>Dropbox App Secret</label>
+      <input type="password" id="setup-appsecret" placeholder="es. xyz789abc123" />
+    </div>
+    <div class="field-group">
       <label>Nome del corso (es. Marketing 2025)</label>
       <input type="text" id="setup-corso" placeholder="Nome corso" />
     </div>
@@ -814,6 +818,7 @@
 const STORAGE_KEYS = {
   password: 'reg_password',
   appKey: 'reg_dropbox_appkey',
+  appSecret: 'reg_dropbox_appsecret',
   corso: 'reg_corso',
   attendances: 'reg_attendances',
   session: 'reg_session',
@@ -879,15 +884,17 @@ function showView(name) {
 function saveSetup() {
   const pwd = document.getElementById('setup-pwd').value.trim();
   const appKey = document.getElementById('setup-appkey').value.trim();
+  const appSecret = document.getElementById('setup-appsecret').value.trim();
   const corso = document.getElementById('setup-corso').value.trim();
 
-  if (!pwd || !appKey || !corso) {
+  if (!pwd || !appKey || !appSecret || !corso) {
     toast('Compila tutti i campi');
     return;
   }
 
   localStorage.setItem(STORAGE_KEYS.password, pwd);
   localStorage.setItem(STORAGE_KEYS.appKey, appKey);
+  localStorage.setItem(STORAGE_KEYS.appSecret, appSecret);
   localStorage.setItem(STORAGE_KEYS.corso, corso);
   localStorage.setItem('logged_in', '1');
 
@@ -1138,8 +1145,8 @@ function startDropboxAuth() {
 }
 
 async function handleDropboxCallback(code) {
-  // Exchange code for token
   const appKey = localStorage.getItem(STORAGE_KEYS.appKey);
+  const appSecret = localStorage.getItem(STORAGE_KEYS.appSecret);
   const baseUrl = window.location.origin + window.location.pathname;
 
   try {
@@ -1150,6 +1157,7 @@ async function handleDropboxCallback(code) {
         code,
         grant_type: 'authorization_code',
         client_id: appKey,
+        client_secret: appSecret,
         redirect_uri: baseUrl,
       })
     });
