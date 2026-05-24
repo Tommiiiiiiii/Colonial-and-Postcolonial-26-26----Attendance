@@ -860,8 +860,8 @@ function init() {
     return;
   }
 
-  // Check if already logged in this session
-  if (sessionStorage.getItem('logged_in') === '1') {
+  // Check if already logged in (use localStorage so it survives OAuth redirect)
+  if (localStorage.getItem('logged_in') === '1') {
     initProfView();
   } else {
     showView('login');
@@ -889,7 +889,7 @@ function saveSetup() {
   localStorage.setItem(STORAGE_KEYS.password, pwd);
   localStorage.setItem(STORAGE_KEYS.appKey, appKey);
   localStorage.setItem(STORAGE_KEYS.corso, corso);
-  sessionStorage.setItem('logged_in', '1');
+  localStorage.setItem('logged_in', '1');
 
   initProfView();
 }
@@ -901,7 +901,7 @@ function doLogin() {
   const input = document.getElementById('login-pwd').value;
   const stored = localStorage.getItem(STORAGE_KEYS.password);
   if (input === stored) {
-    sessionStorage.setItem('logged_in', '1');
+    localStorage.setItem('logged_in', '1');
     document.getElementById('login-error').classList.remove('show');
     initProfView();
   } else {
@@ -1159,7 +1159,7 @@ async function handleDropboxCallback(code) {
       dropboxToken = data.access_token;
       // Clear URL params and go to prof view
       window.history.replaceState({}, '', window.location.pathname);
-      sessionStorage.setItem('logged_in', '1');
+      localStorage.setItem('logged_in', '1');
       initProfView();
       setTimeout(() => { setDropboxStatus('connected', '✓ Dropbox connesso!'); toast('Dropbox connesso con successo!'); }, 500);
     } else {
